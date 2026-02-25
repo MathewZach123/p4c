@@ -113,6 +113,20 @@ void TypeMap::setType(const IR::Node *element, const IR::Type *type) {
 const IR::Type *TypeMap::getType(const IR::Node *element, bool notNull) const {
     CHECK_NULL(element);
     const auto *result = get(typeMap, element);
+    if (result == nullptr && errorCount() == 0) {
+        if (auto expression = element->to<IR::StructExpression>()) {
+            auto expressionType = expression->type;
+            if (expressionType != nullptr && !expressionType->is<IR::Type_Unknown>()) {
+                if (expressionType->is<IR::Type_Name>()) {
+                    if (auto mapped = get(typeMap, expressionType)) {
+                        if (auto typeType = mapped->to<IR::Type_Type>()) result = typeType->type;
+                    }
+                } else {
+                    result = expressionType;
+                }
+            }
+        }
+    }
     LOG4("Looking up type for " << dbp(element) << " => " << dbp(result));
     if (notNull && result == nullptr)
         BUG_CHECK(errorCount() > 0, "Could not find type for %1%", dbp(element));
